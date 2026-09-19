@@ -1,6 +1,6 @@
 {
   "name": "vidvault-api",
   "version": "1.0.0",
-  "type": "commonjs",
+  "type": "module",
   "main": "src/main.js"
 }

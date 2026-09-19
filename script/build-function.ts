@@ -10,7 +10,7 @@ async function main() {
     platform: "node",
     target: "node20",
     bundle: true,
-    format: "cjs",
+    format: "esm",
     outfile: "appwrite/function/src/main.js",
     minify: true,
     logLevel: "info",
@@ -18,7 +18,7 @@ async function main() {
   await writeFile(
     "appwrite/function/package.json",
     JSON.stringify(
-      { name: "vidvault-api", version: "1.0.0", type: "commonjs", main: "src/main.js" },
+      { name: "vidvault-api", version: "1.0.0", type: "module", "main": "src/main.js" },
       null,
       2,
     ) + "\n",

@@ -58,6 +58,9 @@ git push -u origin main
 npm run build:function     # bundles → appwrite/function/ (already committed, re-run after edits)
 ```
 
+The bundle is dependency-free ESM (`export default`) with CORS handled
+internally — no npm install needed inside the function.
+
 Then in the [Appwrite Console](https://cloud.appwrite.io):
 
 1. Create a project, then go to **Functions** → **Create function**.
@@ -79,11 +82,13 @@ Then in the [Appwrite Console](https://cloud.appwrite.io):
 2. Build settings:
    - **Framework:** React (or Other)
    - **Install command:** `npm install`
-   - **Build command:** `npm run build`
+   - **Build command:** `npm run build:site`
    - **Output directory:** `./dist/public`
-3. **Environment variables:** add
-   `VITE_API_BASE = https://xxxx.fra.appwrite.run` (your function domain
-   from step 2.5). This bakes the API address into the static build.
+3. **Environment variables:**
+   - `VITE_API_BASE = https://xxxx.fra.appwrite.run` — your function domain
+     (bakes the API address into the static build)
+   - `VITE_SAVE_MODE = local` — saves go to the browser's localStorage
+     instead of calling the (nonexistent) saved-videos backend
 4. Deploy. Deep links like `/#/saved` work out of the box — no 404s.
 
 > Notes: saved videos on the Appwrite deployment are kept per browser in
