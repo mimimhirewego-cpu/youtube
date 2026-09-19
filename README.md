@@ -43,6 +43,29 @@ Appwrite Sites hosts the **static React build**, and an **Appwrite Function**
 provides the YouTube data API (Appwrite Sites cannot run an Express server,
 and browsers can't call YouTube's data API directly due to CORS).
 
+### Settings cheat-sheet
+
+**Function** (create first — you need its domain for the site build):
+
+| Setting | Value |
+|---|---|
+| Runtime | Node.js 20 or newer |
+| Entrypoint | `src/main.js` |
+| Execute access | **Any** (browsers must be able to call it) |
+| Dependencies | none — the bundle is self-contained |
+
+**Site** (connect your GitHub repo, then use these build settings):
+
+| Setting | Value |
+|---|---|
+| Framework | React (or Other) |
+| Install command | `npm install` |
+| Build command | `npm run build:site` |
+| Output directory | `./dist/public` |
+| Env var 1 | `VITE_API_BASE` = your function domain, e.g. `https://xxxx.fra.appwrite.run` |
+| Env var 2 | `VITE_SAVE_MODE` = `local` |
+| Rendering | Static (no SSR needed — the app is a hash-routed SPA) |
+
 ### 1. Push this repo to GitHub
 
 Create an empty GitHub repo and push:

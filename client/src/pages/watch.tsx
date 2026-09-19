@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import { Bookmark, BookmarkCheck, ExternalLink, Play, Users } from "lucide-react";
+import { Bookmark, BookmarkCheck, ExternalLink, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useSavedVideos, useToggleSave } from "@/hooks/use-saved";
 import { CompactVideoCard, ChannelAvatar } from "@/components/video-card";
@@ -19,9 +19,10 @@ interface VideoInfo {
 export default function Watch() {
   const { id } = useParams<{ id: string }>();
   const seed = useMemo(() => takeSeed(), [id]);
-  // click-to-play: browsers block autoplayed embeds (that was the black screen).
-  // Show the thumbnail + play button first, load the embed on the user's click.
-  const [playing, setPlaying] = useState(false);
+  // The player mounts immediately with autoplay — the click on the video card
+  // counts as the user gesture that allows it. The thumbnail shows underneath
+  // until the embed finishes loading so there's never an empty black frame.
+  const [playerReady, setPlayerReady] = useState(false);
 
   const { data: info, isLoading, error } = useQuery<VideoInfo>({
     queryKey: ["/api/video", id],
@@ -73,49 +74,39 @@ export default function Watch() {
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-6 xl:flex-row">
       <div className="min-w-0 flex-1">
-        {/* player */}
+        {/* player — mounts immediately, autoplays off the click that opened it */}
         <div className="overflow-hidden rounded-2xl bg-black shadow-lg">
           <div className="relative aspect-video w-full">
-            {playing ? (
-              <iframe
-                key={id}
-                data-testid={`iframe-player-${id}`}
-                src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`}
-                title={current.title ?? "Video player"}
-                className="absolute inset-0 h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPlaying(true)}
-                aria-label="Play video"
-                data-testid={`button-play-${id}`}
-                className="group absolute inset-0 block h-full w-full cursor-pointer"
-              >
-                <img
-                  src={current.thumbnail ?? `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-                  }}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors group-hover:bg-black/10">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-xl transition-transform group-hover:scale-110 sm:h-20 sm:w-20">
-                    <Play size={30} className="ml-1" fill="currentColor" />
-                  </span>
-                </span>
-                <span className="absolute bottom-3 right-3 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white">
-                  If the player won't start, use “Watch on YouTube”
-                </span>
-              </button>
-            )}
+            <img
+              src={current.thumbnail ?? `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+              }}
+              alt=""
+              aria-hidden
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity ${
+                playerReady ? "opacity-0" : "opacity-100"
+              }`}
+              referrerPolicy="no-referrer"
+            />
+            <iframe
+              key={id}
+              data-testid={`iframe-player-${id}`}
+              src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`}
+              title={current.title ?? "Video player"}
+              className={`absolute inset-0 h-full w-full transition-opacity ${
+                playerReady ? "opacity-100" : "opacity-0"
+              }`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => setPlayerReady(true)}
+              allowFullScreen
+            />
           </div>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Video not starting? Tap the player once, or use “Watch on YouTube” below.
+        </p>
 
         {/* title + actions */}
         <h1 className="mt-4 text-lg font-bold leading-snug" data-testid={`text-watch-title-${id}`}>
