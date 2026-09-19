@@ -1,6 +1,11 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+// API base resolution:
+// - local dev / same-origin hosting (incl. Appwrite static + function on same domain): ""
+// - Perplexity preview deploys: the literal sentinel below is rewritten at upload time
+// - any other host (e.g. an Appwrite function domain): set VITE_API_BASE at build time
+const RAW_API_BASE = import.meta.env.VITE_API_BASE || "__PORT_5000__";
+const API_BASE = RAW_API_BASE.startsWith("__") ? "" : RAW_API_BASE;
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
