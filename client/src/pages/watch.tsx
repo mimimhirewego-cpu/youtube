@@ -22,7 +22,9 @@ export default function Watch() {
   // The player mounts immediately with autoplay — the click on the video card
   // counts as the user gesture that allows it. The thumbnail shows underneath
   // until the embed finishes loading so there's never an empty black frame.
-  const [playerReady, setPlayerReady] = useState(false);
+  // Keyed by video id so switching videos (same page) re-arms the underlay.
+  const [loadedVideoId, setLoadedVideoId] = useState<string | null>(null);
+  const playerReady = loadedVideoId === id;
 
   const { data: info, isLoading, error } = useQuery<VideoInfo>({
     queryKey: ["/api/video", id],
@@ -99,7 +101,7 @@ export default function Watch() {
               }`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
-              onLoad={() => setPlayerReady(true)}
+              onLoad={() => setLoadedVideoId(id)}
               allowFullScreen
             />
           </div>
