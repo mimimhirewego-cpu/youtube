@@ -17,6 +17,11 @@ import {
   searchYouTube,
 } from "../server/youtube";
 
+// Injected at build time (script/build-function.ts): the entire site as a
+// single HTML file with JS and CSS inlined, so one function upload serves
+// both the app and its API on the same domain.
+declare const __SITE_HTML__: string | undefined;
+
 interface FnReq {
   method: string;
   path: string;
@@ -59,6 +64,17 @@ export default async function handler({
 
   try {
     if (req.method !== "GET") return res.json({ message: "Method not allowed" }, 405, CORS);
+
+    // The site itself — any non-API GET returns the single-file app.
+    if (!path.startsWith("/api")) {
+      if (typeof __SITE_HTML__ === "string") {
+        return res.text(__SITE_HTML__, 200, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300",
+        });
+      }
+      return res.json({ message: "Not found" }, 404, CORS);
+    }
 
     if (path === "/api/trending") {
       const category = q.category || "all";
