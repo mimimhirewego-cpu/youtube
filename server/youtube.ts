@@ -69,6 +69,7 @@ function parseVideoRenderer(r: Record<string, unknown>): YtVideo | null {
   if (typeof videoId !== "string" || videoId.length !== 11) return null;
   const title = text(r.title);
   if (!title) return null;
+
   let channelId: string | null = null;
   let channelTitle = "";
   const owner = r.ownerText as Record<string, unknown> | undefined;
@@ -81,15 +82,24 @@ function parseVideoRenderer(r: Record<string, unknown>): YtVideo | null {
       if (typeof bep?.browseId === "string") channelId = bep.browseId;
     }
   }
-  if (!channelId) {
-    const short = r.shortBylineText as Record<string, unknown> | undefined;
-    if (short) channelTitle = text(short) ?? channelTitle;
+  if (!channelTitle) {
+    channelTitle = text(r.shortBylineText) ?? "";
   }
+  if (!channelId) {
+    // newer renderers bury the channel id inside hover-card dialogs — find it anywhere
+    channelId = JSON.stringify(r).match(/"browseId":"(UC[\w-]{20,})"/)?.[1] ?? null;
+  }
+  const channelAvatar =
+    (
+      JSON.stringify(r.avatar ?? {}).match(/"url":"(https:[^"]+)"/)?.[1] ?? null
+    ) || null;
+
   return {
     videoId,
     title,
     channelId,
     channelTitle,
+    channelAvatar,
     viewCountText: text(r.viewCountText),
     publishedText: text(r.publishedTimeText),
     lengthText: text(r.lengthText),
@@ -125,13 +135,24 @@ export async function searchYouTube(
     const channelId = r.channelId as string;
     if (seenCh.has(channelId)) continue;
     seenCh.add(channelId);
+    // Newer responses swap fields: subscriberCountText holds the handle,
+    // videoCountText holds the subscriber count. Handle both layouts.
+    const subField = text(r.subscriberCountText);
+    const vidField = text(r.videoCountText);
+    let handle: string | null = null;
+    let subscriberCountText: string | null = null;
+    for (const t of [subField, vidField]) {
+      if (!t) continue;
+      if (t.startsWith("@")) handle = t;
+      else if (/subscriber/i.test(t)) subscriberCountText = t;
+    }
     channels.push({
       channelId,
       title: text(r.title) ?? "",
-      handle: null,
+      handle,
       avatar: pickThumb(r.thumbnail),
-      subscriberCountText: text(r.subscriberCountText),
-      videoCountText: text(r.videoCountText),
+      subscriberCountText,
+      videoCountText: null,
       description: text(r.descriptionSnippet),
     });
   }
@@ -216,7 +237,55 @@ interface ChannelPage {
   nextToken: string | null;
 }
 
-export async function getChannelVideos(channelId: string, continuation?: string): Promise<ChannelPage> {
+/** Parse a `lockupViewModel` (the new format YouTube serves on channel video grids). */
+function parseLockup(lu: Record<string, unknown>, channelId: string): YtVideo | null {
+  const videoId = lu.contentId;
+  if (typeof videoId !== "string" || videoId.length !== 11) return null;
+  const meta = walk(lu.metadata, (o) => !!o.lockupMetadataViewModel)[0] as
+    | { lockupMetadataViewModel?: { title?: { content?: string }; metadata?: Record<string, unknown> } }
+    | undefined;
+  const title = meta?.lockupMetadataViewModel?.title?.content;
+  if (!title) return null;
+
+  // metadataRows → ["12M views", "6 hours ago"]
+  let viewCountText: string | null = null;
+  let publishedText: string | null = null;
+  const parts = walk(meta?.lockupMetadataViewModel?.metadata, (o) => Array.isArray(o.metadataParts))[0] as
+    | { metadataParts?: { text?: { content?: string } }[] }
+    | undefined;
+  if (parts?.metadataParts) {
+    viewCountText = parts.metadataParts[0]?.text?.content ?? null;
+    publishedText = parts.metadataParts[1]?.text?.content ?? null;
+  }
+
+  // duration badge e.g. "19:03" lives under contentImage
+  const lengthText =
+    walk(lu.contentImage, (o) => typeof o.text === "string" && /^\d{1,2}(:\d{2})+$/.test(o.text))
+      .map((o) => (o as { text: string }).text)[0] ?? null;
+
+  const thumbnail = walk(lu.contentImage, (o) => Array.isArray(o.sources) && o.sources.length > 0)
+    .map((o) => (o as { sources: { url: string; width: number }[] }).sources)
+    .flat()
+    .reduce((a, b) => (b.width > a.width ? b : a)).url ?? null;
+
+  return {
+    videoId,
+    title,
+    channelId,
+    channelTitle: "",
+    channelAvatar: null,
+    viewCountText,
+    publishedText,
+    lengthText,
+    thumbnail,
+  };
+}
+
+export async function getChannelVideos(
+  channelId: string,
+  continuation?: string,
+  channelHint?: { name: string; avatar: string | null },
+): Promise<ChannelPage> {
   const body: Record<string, unknown> = continuation
     ? { continuation }
     : { browseId: channelId, params: "EgZ2aWRlb3PyBgQKAjoA" }; // "Videos" tab
@@ -224,12 +293,28 @@ export async function getChannelVideos(channelId: string, continuation?: string)
 
   const videos: YtVideo[] = [];
   const seen = new Set<string>();
+
+  // New format: lockupViewModel grid items
+  for (const r of walk(data, (o) => !!o.lockupViewModel)) {
+    const v = parseLockup((r as { lockupViewModel: Record<string, unknown> }).lockupViewModel, channelId);
+    if (v && !seen.has(v.videoId)) {
+      seen.add(v.videoId);
+      videos.push(v);
+    }
+  }
+  // Old format fallback: classic videoRenderer grid items
   for (const r of walk(data, (o) => typeof o.videoId === "string" && !!o.title && !!o.lengthText)) {
     const v = parseVideoRenderer(r);
     if (v && !seen.has(v.videoId)) {
       seen.add(v.videoId);
       videos.push(v);
     }
+  }
+
+  // Fill in channel display info we already know.
+  for (const v of videos) {
+    if (!v.channelTitle) v.channelTitle = channelHint?.name ?? "";
+    if (!v.channelAvatar) v.channelAvatar = channelHint?.avatar ?? null;
   }
 
   let nextToken: string | null = null;

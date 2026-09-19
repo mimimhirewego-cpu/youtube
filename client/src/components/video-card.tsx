@@ -112,10 +112,10 @@ export function VideoCard({ video }: { video: VideoLike }) {
             className="shrink-0"
             aria-label={`Go to ${video.channelTitle}`}
           >
-            <ChannelAvatar name={video.channelTitle || "?"} />
+            <ChannelAvatar name={video.channelTitle || "?"} url={video.channelAvatar} />
           </Link>
         ) : (
-          <ChannelAvatar name={video.channelTitle || "?"} />
+          <ChannelAvatar name={video.channelTitle || "?"} url={video.channelAvatar} />
         )}
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground" title={video.title}>

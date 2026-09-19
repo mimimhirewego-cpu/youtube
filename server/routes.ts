@@ -63,7 +63,17 @@ export async function registerRoutes(_httpServer: Server, app: Express): Promise
         typeof req.query.continuation === "string" && req.query.continuation.length > 0
           ? req.query.continuation
           : undefined;
-      const page = await getChannelVideos(req.params.id, continuation);
+      // enrich items with the channel's name/avatar (cached, best-effort)
+      let hint: { name: string; avatar: string | null } | undefined;
+      try {
+        const info = await cached(`chinfo:${req.params.id}`, 30 * 60 * 1000, () =>
+          getChannelInfo(req.params.id),
+        );
+        hint = { name: info.name, avatar: info.avatar };
+      } catch {
+        hint = undefined;
+      }
+      const page = await getChannelVideos(req.params.id, continuation, hint);
       res.json(page);
     } catch (err) {
       res.status(502).json({ message: (err as Error).message });

@@ -32,9 +32,9 @@ export default function Watch() {
 
   const channelId = info?.channelId ?? seed?.channelId ?? null;
 
-  // more from this channel
+  // more from this channel (distinct key — the channel page caches an infinite query under a similar key)
   const { data: channelVideos } = useQuery<{ videos: YtVideo[] }>({
-    queryKey: ["/api/channel", channelId, "videos"],
+    queryKey: ["/api/channel", channelId, "related"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/channel/${channelId}/videos`);
       return res.json();
@@ -113,7 +113,9 @@ export default function Watch() {
               ) : (
                 <span className="block max-w-[40vw] truncate text-sm font-semibold">{current.channelTitle}</span>
               )}
-              {isLoading && <span className="text-xs text-muted-foreground">Loading channel…</span>}
+              {isLoading && !current.channelTitle && (
+                <span className="text-xs text-muted-foreground">Loading channel…</span>
+              )}
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, type InfiniteData, type QueryKey } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { ArrowLeft, ExternalLink, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,7 +22,7 @@ export default function ChannelPage() {
     retry: false,
   });
 
-  const videosQuery = useInfiniteQuery<ChannelPage>({
+  const videosQuery = useInfiniteQuery<ChannelPage, Error, InfiniteData<ChannelPage>, QueryKey, string>({
     queryKey: ["/api/channel", id, "videos"],
     initialPageParam: "",
     queryFn: async ({ pageParam }: { pageParam: string }) => {
@@ -61,7 +61,7 @@ export default function ChannelPage() {
       </Link>
 
       {/* channel header */}
-      <div className="mb-8 flex flex-wrap items-center gap-5">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5">
         <ChannelAvatar name={info_?.name ?? "?"} url={info_?.avatar} size={96} />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold" data-testid="text-channel-name">
@@ -78,9 +78,9 @@ export default function ChannelPage() {
           target="_blank"
           rel="noopener noreferrer"
           data-testid="link-channel-youtube"
-          className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-secondary"
+          className="self-start rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-secondary sm:self-auto"
         >
-          <ExternalLink size={15} /> Open on YouTube
+          <ExternalLink size={15} className="mr-2 inline" /> Open on YouTube
         </a>
       </div>
 

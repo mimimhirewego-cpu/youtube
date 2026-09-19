@@ -46,6 +46,7 @@ export interface YtVideo {
   title: string;
   channelId: string | null;
   channelTitle: string;
+  channelAvatar: string | null;
   viewCountText: string | null;
   publishedText: string | null;
   lengthText: string | null;
