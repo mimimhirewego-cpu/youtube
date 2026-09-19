@@ -115,7 +115,7 @@ const NAV = [
   { href: "/saved", label: "Saved", icon: Bookmark, testid: "link-saved-nav" },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
   const [location] = useLocation();
   const { data: saved } = useSavedVideos();
   return (
@@ -129,13 +129,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             href={item.href}
             onClick={onNavigate}
             data-testid={item.testid}
+            title={compact ? item.label : undefined}
             className={cn(
-              "flex items-center gap-5 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-secondary",
+              "rounded-xl text-sm font-medium hover:bg-secondary",
+              compact
+                ? "flex flex-col items-center gap-1.5 px-1 py-3.5 text-[10px]"
+                : "flex items-center gap-5 px-3 py-2.5",
               active && "bg-secondary font-semibold",
             )}
           >
             <span className="relative">
-              <Icon size={22} className={active ? "text-primary" : ""} />
+              <Icon size={compact ? 24 : 22} className={active ? "text-primary" : ""} />
               {item.href === "/saved" && saved && saved.length > 0 && (
                 <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
                   {saved.length > 9 ? "9+" : saved.length}
@@ -146,9 +150,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         );
       })}
-      <div className="mt-4 border-t border-border pt-3 px-3 text-[11px] leading-relaxed text-muted-foreground">
-        Videos play via YouTube's official player. VidVault is a fan-made browser — not affiliated with YouTube.
-      </div>
+      {!compact && (
+        <div className="mt-4 border-t border-border pt-3 px-3 text-[11px] leading-relaxed text-muted-foreground">
+          Videos play via YouTube's official player. VidVault is a fan-made browser — not affiliated with YouTube.
+        </div>
+      )}
     </nav>
   );
 }
@@ -181,7 +187,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 open ? "w-60" : "w-[72px]",
               )}
             >
-              <SidebarContent />
+              <SidebarContent compact={!open} />
             </aside>
             {/* mobile drawer */}
             {drawer && (
